@@ -1,0 +1,139 @@
+{
+  "resources": {
+    "main-picture": {
+      "id": "main-picture",
+      "type": "TrackFile",
+      "hash": "sha256:picture-v1",
+      "chunks": [
+        "picture-0",
+        "picture-1"
+      ]
+    },
+    "main-sound": {
+      "id": "main-sound",
+      "type": "TrackFile",
+      "hash": "sha256:sound-v1",
+      "chunks": [
+        "sound-0"
+      ]
+    },
+    "new-language": {
+      "id": "new-language",
+      "type": "TrackFile",
+      "hash": "sha256:language-v2",
+      "chunks": [
+        "lang-0"
+      ]
+    },
+    "cpl-base": {
+      "id": "cpl-base",
+      "type": "CPL",
+      "resources": [
+        {
+          "trackFileId": "main-picture",
+          "editRate": [
+            24000,
+            1001
+          ],
+          "entryPoint": 0,
+          "sourceDuration": 24000,
+          "repeatCount": 1,
+          "intrinsicDuration": 48000
+        },
+        {
+          "trackFileId": "main-sound",
+          "editRate": [
+            24,
+            1
+          ],
+          "entryPoint": 24,
+          "sourceDuration": 24,
+          "repeatCount": 1,
+          "intrinsicDuration": 240
+        }
+      ],
+      "issuer": "studio-a"
+    },
+    "cpl-localized": {
+      "id": "cpl-localized",
+      "base": "cpl-base",
+      "resources": [
+        {
+          "trackFileId": "main-picture",
+          "editRate": [
+            24000,
+            1001
+          ],
+          "entryPoint": 100,
+          "sourceDuration": 12000,
+          "repeatCount": 1,
+          "intrinsicDuration": 48000
+        },
+        {
+          "trackFileId": "new-language",
+          "editRate": [
+            24,
+            1
+          ],
+          "entryPoint": 0,
+          "sourceDuration": 24,
+          "repeatCount": 2,
+          "intrinsicDuration": 1000
+        }
+      ],
+      "issuer": "studio-b"
+    },
+    "duplicate": {
+      "id": "same-named",
+      "type": "TrackFile",
+      "hash": "sha256:different-object"
+    }
+  },
+  "packages": {
+    "base": {
+      "ASSETMAP": [
+        "cpl-base",
+        "main-picture",
+        "main-sound"
+      ],
+      "PKL": [
+        "cpl-base",
+        "main-picture",
+        "main-sound"
+      ],
+      "CPL": [
+        "cpl-base"
+      ]
+    },
+    "supplement": {
+      "ASSETMAP": [
+        "cpl-localized",
+        "new-language"
+      ],
+      "PKL": [
+        "cpl-localized",
+        "new-language"
+      ],
+      "CPL": [
+        "cpl-localized"
+      ]
+    }
+  },
+  "chunks": {
+    "picture-0": "b2650c24ecd486602f684cf74490affabd1d25881379c174c3156132e92eed16",
+    "picture-1": "37a8ab23f5d4f6b6bffe16704b2aeb990f119977c44d0e0c5fe5be2b78cd25ce",
+    "sound-0": "e35a63cd55803dbfe33eec264ecc00a68ee679a21d2e1c2f0489a3ec923ee136",
+    "lang-0": "79460494b7dfbbc5e5a2fb03b54879b64c067afe99c47c7a41cede9c1670a255"
+  },
+  "packageHashes": {
+    "base": {
+      "cpl-base": "4173b95fb05bca3bc009b21a62d1433903461f06746758bfbb1bf83394210eba",
+      "main-picture": "fdfad7a2af2abf48a40f26445518d760beea87695b3c0f2baa55e4fa5b2b13a7",
+      "main-sound": "7a1b07bbf40eacce65cbad44d6ec0895673a8eaa26c590ead4d496207cdc73b1"
+    },
+    "supplement": {
+      "cpl-localized": "0ee6add8fe48ff09cffa54001fccee6e362961a5d8f1641529c84db744cd21cb",
+      "new-language": "7e4260ca2f96c50dfcc2a51dfb3b9f300e19ca7a74a4a095e7b864dc02ccb555"
+    }
+  }
+}

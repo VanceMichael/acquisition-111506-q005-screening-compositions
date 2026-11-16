@@ -8,13 +8,17 @@ export const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 export async function openStore(directory) {
   await mkdir(join(directory, 'blobs'), { recursive: true });
   const journal = join(directory, 'receipts.jsonl');
-  let receipts;
-  try {
-    receipts = (await readFile(journal, 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line));
-  } catch (error) {
-    if (error.code !== 'ENOENT') throw error;
-    receipts = [];
-  }
+  const claimJournal = join(directory, 'claims.jsonl');
+  const loadJournal = async path => {
+    try {
+      return (await readFile(path, 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line));
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+      return [];
+    }
+  };
+  let receipts = await loadJournal(journal);
+  let claims = await loadJournal(claimJournal);
   let pending = Promise.resolve();
   const serialize = operation => {
     const next = pending.then(operation);
@@ -67,6 +71,59 @@ export async function openStore(directory) {
         receipts.push(receipt);
         return { ...structuredClone(receipt), duplicate: false };
       });
+    },
+    // 自动组合领取：依据已由领域层取得原始字节，这里只做内容寻址落盘与建账。
+    // 与人工收件分开建账，保留各自接口语义；同一 claimIdentity 幂等返回原单。
+    acceptClaim(claim, evidenceItems) {
+      return serialize(async () => {
+        if (!claim || typeof claim !== 'object') throw Object.assign(new Error('领取内容无效'), { status: 422 });
+        if (!Array.isArray(evidenceItems) || evidenceItems.length === 0 || evidenceItems.length > 100) {
+          throw Object.assign(new Error('领取需要原始依据，单次不超过100份'), { status: 422 });
+        }
+        const prepared = evidenceItems.map(item => {
+          if (!item || typeof item.source !== 'string' || !item.source.trim() || !Buffer.isBuffer(item.bytes)) {
+            throw Object.assign(new Error('领取依据必须包含来源和原始字节'), { status: 422 });
+          }
+          const sha256 = digest(item.bytes);
+          if (item.sha256 && item.sha256 !== sha256) throw Object.assign(new Error('依据哈希不匹配'), { status: 422 });
+          return { bytes: item.bytes, ref: { source: item.source, mediaType: item.mediaType ?? 'application/octet-stream', sha256, size: item.bytes.length, ...(item.role ? { role: item.role } : {}), ...(item.etag ? { etag: item.etag } : {}), ...(typeof item.digestMatch === 'boolean' ? { digestMatch: item.digestMatch } : {}) } };
+        });
+        const refs = prepared.map(item => item.ref);
+        const identity = digest(JSON.stringify({ key: claim.compositionId, claim, refs }));
+        const existing = claims.find(entry => entry.identity === identity);
+        if (existing) return { ...structuredClone(existing), duplicate: true };
+        for (const item of prepared) {
+          try {
+            await writeFile(join(directory, 'blobs', item.ref.sha256), item.bytes, { flag: 'wx' });
+          } catch (error) {
+            if (error.code !== 'EEXIST') throw error;
+          }
+        }
+        const record = {
+          sequence: claims.length + 1,
+          identity,
+          key: claim.compositionId,
+          claim: structuredClone(claim),
+          evidence: refs,
+          receivedAt: new Date().toISOString(),
+        };
+        await appendFile(claimJournal, JSON.stringify(record) + '\n');
+        claims.push(record);
+        return { ...structuredClone(record), duplicate: false };
+      });
+    },
+    listClaims() {
+      const latest = new Map();
+      for (const entry of claims) latest.set(entry.identity, entry);
+      return structuredClone([...latest.values()]);
+    },
+    claimHistory(key) {
+      return structuredClone(claims.filter(entry => entry.key === key));
+    },
+    claim(identity) {
+      const found = claims.find(entry => entry.identity === identity);
+      if (!found) throw Object.assign(new Error('领取单不存在'), { status: 404 });
+      return structuredClone(found);
     },
     flush() { return pending; },
   };
